@@ -4,33 +4,60 @@ from langchain_core.documents import Document
 from backend.config.settings import settings
 
 
-def _get_store() -> Chroma:
-    embeddings = OpenAIEmbeddings(model=settings.embedding_model)
+def _embeddings():
+    return OpenAIEmbeddings(model=settings.emb_model_name)
+
+
+def _get_jd_store() -> Chroma:
     return Chroma(
         persist_directory=settings.vectorstore_path,
-        embedding_function=embeddings,
+        embedding_function=_embeddings(),
         collection_name="jd_collection",
     )
 
 
+def _get_linkareer_store() -> Chroma:
+    return Chroma(
+        persist_directory=settings.vectorstore_path,
+        embedding_function=_embeddings(),
+        collection_name="linkareer_collection",
+    )
+
+
+# ── JD 관련 ──────────────────────────────────────────
+
 def get_retriever(job_id: str | None = None):
     """job_id가 있으면 해당 채용공고만 필터링해서 검색"""
-    store = _get_store()
-    search_kwargs = {"k": 4}
+    store = _get_jd_store()
+    search_kwargs: dict = {"k": 4}
     if job_id:
         search_kwargs["filter"] = {"job_id": job_id}
     return store.as_retriever(search_kwargs=search_kwargs)
 
 
 def ingest_documents(documents: list[Document]) -> None:
-    """파싱된 Document 리스트를 벡터스토어에 저장"""
-    store = _get_store()
+    """JD PDF 파싱 결과를 벡터스토어에 저장"""
+    store = _get_jd_store()
     store.add_documents(documents)
-    print(f"[vectorstore] {len(documents)}개 문서 저장 완료")
+    print(f"[vectorstore:jd] {len(documents)}개 문서 저장 완료")
 
 
 def delete_job(job_id: str) -> None:
-    """특정 채용공고 벡터 전체 삭제"""
-    store = _get_store()
+    store = _get_jd_store()
     store.delete(where={"job_id": job_id})
-    print(f"[vectorstore] job_id={job_id} 삭제 완료")
+    print(f"[vectorstore:jd] job_id={job_id} 삭제 완료")
+
+
+# ── 링커리어 자소서 관련 ──────────────────────────────
+
+def get_linkareer_retriever():
+    """링커리어 KT 자소서 검색 리트리버"""
+    store = _get_linkareer_store()
+    return store.as_retriever(search_kwargs={"k": 3})
+
+
+def ingest_linkareer_documents(documents: list[Document]) -> None:
+    """링커리어 크롤링 결과를 벡터스토어에 저장"""
+    store = _get_linkareer_store()
+    store.add_documents(documents)
+    print(f"[vectorstore:linkareer] {len(documents)}개 문서 저장 완료")

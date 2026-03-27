@@ -9,3 +9,5 @@ langchain-chroma
 langgraph
 chromadb
 pymupdf
+playwright
+beautifulsoup4
