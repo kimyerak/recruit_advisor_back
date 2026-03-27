@@ -35,43 +35,57 @@ def parse_cover_letter_ids(html: str) -> list[int]:
 
 
 def parse_detail(html: str, cid: int) -> list[Document]:
-    """상세 페이지에서 자소서 질문+답변 파싱"""
+    """상세 페이지에서 KT 자소서 질문+답변만 파싱"""
     soup = BeautifulSoup(html, "html.parser")
+    full_text = soup.get_text(separator="\n", strip=True)
+
+    # ── 타이틀 추출 ──────────────────────────────────────
+    # "합격 자소서" 섹션 이후 첫 번째 "KT / ..." 줄
+    title = "KT 자소서"
+    m = re.search(r"합격 자소서\n(KT\s*/[^\n]+)", full_text)
+    if m:
+        title = m.group(1).strip()
+
+    # ── 본문 범위 추출 ────────────────────────────────────
+    # "이 글은 KT" → 실제 자소서 소개 시작점
+    # "새창" / "자바스크립트" → 푸터 시작점
+    body = full_text
+    start = full_text.find("이 글은 KT")
+    if start == -1:
+        start = full_text.find("합격 자소서")
+    end_markers = ["새창\n새창", "새창\n목록", "자바스크립트가 작동하지 않는"]
+    end = len(full_text)
+    for marker in end_markers:
+        idx = full_text.find(marker, start)
+        if idx != -1:
+            end = min(end, idx)
+    if start != -1:
+        body = full_text[start:end]
+
+    # ── 번호 기준 질문+답변 분리 ─────────────────────────
+    # 패턴: "1. 질문 내용\n답변..."  "2. 질문 내용\n답변..."
+    qa_pattern = re.compile(r"(\d+\.\s{0,2}.{10,}?\n)([\s\S]+?)(?=\n\d+\.\s|\Z)")
+    blocks = qa_pattern.findall(body)
+
     docs = []
+    if blocks:
+        for question_raw, answer_raw in blocks:
+            question = question_raw.strip()
+            answer = re.sub(r"\n+", " ", answer_raw).strip()
+            if len(answer) < 30:  # 너무 짧은 답변 제외
+                continue
+            docs.append(Document(
+                page_content=f"[KT 합격 자소서]\n직무: {title}\n\n질문: {question}\n답변: {answer}",
+                metadata={"source": "linkareer", "cover_letter_id": cid, "title": title, "question": question},
+            ))
 
-    # 회사명/공고 타이틀
-    title_tag = soup.find("h1") or soup.find("h2")
-    title = title_tag.get_text(strip=True) if title_tag else "KT 자소서"
-
-    # 질문+답변 블록 추출 (링커리어 공통 구조)
-    # 질문은 보통 strong/h3/b 태그, 답변은 p 태그
-    blocks = []
-    for tag in soup.find_all(["h3", "strong", "b"]):
-        text = tag.get_text(strip=True)
-        if len(text) > 10:  # 짧은 UI 텍스트 제외
-            answer_parts = []
-            for sib in tag.find_next_siblings():
-                if sib.name in ["h3", "strong", "b"]:
-                    break
-                t = sib.get_text(strip=True)
-                if t:
-                    answer_parts.append(t)
-            if answer_parts:
-                blocks.append((text, " ".join(answer_parts)))
-
-    if not blocks:
-        # fallback: 전체 본문을 하나의 문서로
-        body = soup.get_text(separator="\n", strip=True)
+    if not docs:
+        # fallback: 본문 전체를 하나의 문서로
+        clean = re.sub(r"\n{3,}", "\n\n", body).strip()
         docs.append(Document(
-            page_content=f"[KT 합격 자소서]\n{body[:3000]}",
+            page_content=f"[KT 합격 자소서]\n직무: {title}\n\n{clean[:3000]}",
             metadata={"source": "linkareer", "cover_letter_id": cid, "title": title},
         ))
-    else:
-        for q, a in blocks:
-            docs.append(Document(
-                page_content=f"[KT 자소서 항목]\n질문: {q}\n답변: {a}",
-                metadata={"source": "linkareer", "cover_letter_id": cid, "title": title, "question": q},
-            ))
 
     return docs
 

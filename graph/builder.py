@@ -8,9 +8,9 @@ from backend.graph.nodes.responder import responder_node
 def _route(state: ChatState) -> str:
     """프론트에서 전달된 intent로 바로 라우팅 (LLM 추측 없음)"""
     intent = state.get("intent", "story")
-    if intent in ("jd", "resume"):
+    if intent == "jd":
         return "rag"
-    return "responder"  # story는 RAG 없이 페르소나만
+    return "responder"  # story, resume 모두 LLM 직접 응답
 
 
 def build_graph():
