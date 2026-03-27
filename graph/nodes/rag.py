@@ -1,6 +1,6 @@
 from langchain_core.messages import HumanMessage
 from backend.graph.state import ChatState
-from backend.knowledge.vectorstore import get_retriever, get_linkareer_retriever, get_senior_retriever
+from backend.knowledge.vectorstore import get_retriever, get_senior_retriever
 
 
 def rag_node(state: ChatState) -> ChatState:
@@ -13,12 +13,10 @@ def rag_node(state: ChatState) -> ChatState:
 
     intent = state.get("intent", "jd")
     try:
-        if intent == "resume":
-            retriever = get_linkareer_retriever()
-        elif intent == "advice":
-            retriever = get_senior_retriever()
-        else:  # jd
+        if intent == "jd":
             retriever = get_retriever(job_id=state.get("job_id"))
+        else:  # resume, advice 모두 선배 경험 DB
+            retriever = get_senior_retriever()
         docs = retriever.invoke(last_message.content)
         context = "\n\n".join(d.page_content for d in docs)
     except Exception:

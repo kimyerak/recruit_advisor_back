@@ -16,14 +16,6 @@ def _get_jd_store() -> Chroma:
     )
 
 
-def _get_linkareer_store() -> Chroma:
-    return Chroma(
-        persist_directory=settings.vectorstore_path,
-        embedding_function=_embeddings(),
-        collection_name="linkareer_collection",
-    )
-
-
 # ── JD 관련 ──────────────────────────────────────────
 
 def get_retriever(job_id: str | None = None):
@@ -46,21 +38,6 @@ def delete_job(job_id: str) -> None:
     store = _get_jd_store()
     store.delete(where={"job_id": job_id})
     print(f"[vectorstore:jd] job_id={job_id} 삭제 완료")
-
-
-# ── 링커리어 자소서 관련 ──────────────────────────────
-
-def get_linkareer_retriever():
-    """링커리어 KT 자소서 검색 리트리버"""
-    store = _get_linkareer_store()
-    return store.as_retriever(search_kwargs={"k": 3})
-
-
-def ingest_linkareer_documents(documents: list[Document]) -> None:
-    """링커리어 크롤링 결과를 벡터스토어에 저장"""
-    store = _get_linkareer_store()
-    store.add_documents(documents)
-    print(f"[vectorstore:linkareer] {len(documents)}개 문서 저장 완료")
 
 
 # ── 선배 경험 관련 ─────────────────────────────────────
