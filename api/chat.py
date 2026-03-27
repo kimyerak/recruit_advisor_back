@@ -14,7 +14,6 @@ class ChatRequest(BaseModel):
     session_id: str
     mentor_id: str
     job_id: str = ""
-    intent: str = "story"
     message: str
 
 
@@ -28,7 +27,7 @@ async def _generate_suggestions(reply: str, intent: str) -> list[str]:
     """답변 기반으로 후속 질문 3개 생성"""
     intent_hint = {
         "jd": "채용공고, 자격요건, 근무환경, 직무 내용",
-        "story": "실무 경험, 팀 분위기, 커리어 성장, 회사 문화",
+        "advice": "실무 경험, 팀 분위기, 커리어 성장, 회사 문화",
         "resume": "자소서 항목, 표현 방식, KT 핵심가치, 면접 준비",
     }.get(intent, "취업 준비")
 
@@ -60,7 +59,8 @@ async def chat(req: ChatRequest):
                 "mentor_id": req.mentor_id,
                 "job_id": req.job_id,
                 "context": "",
-                "intent": req.intent,
+                "intent": "",
+                "doc_relevance": "",
             },
             config=config,
         )
@@ -70,6 +70,6 @@ async def chat(req: ChatRequest):
     reply = result["messages"][-1].content
 
     # 메인 답변과 후속 질문 생성 병렬 실행
-    suggestions = await _generate_suggestions(reply, req.intent)
+    suggestions = await _generate_suggestions(reply, result.get("intent", "advice"))
 
     return ChatResponse(reply=reply, session_id=req.session_id, suggestions=suggestions)

@@ -1,10 +1,10 @@
 from langchain_core.messages import HumanMessage
 from backend.graph.state import ChatState
-from backend.knowledge.vectorstore import get_retriever, get_linkareer_retriever
+from backend.knowledge.vectorstore import get_retriever, get_linkareer_retriever, get_senior_retriever
 
 
 def rag_node(state: ChatState) -> ChatState:
-    """intent에 따라 JD 또는 링커리어 자소서에서 컨텍스트 검색"""
+    """intent에 따라 적절한 벡터스토어에서 컨텍스트 검색"""
     last_message = next(
         (m for m in reversed(state["messages"]) if isinstance(m, HumanMessage)), None
     )
@@ -12,12 +12,16 @@ def rag_node(state: ChatState) -> ChatState:
         return {"context": ""}
 
     intent = state.get("intent", "jd")
+    try:
+        if intent == "resume":
+            retriever = get_linkareer_retriever()
+        elif intent == "advice":
+            retriever = get_senior_retriever()
+        else:  # jd
+            retriever = get_retriever(job_id=state.get("job_id"))
+        docs = retriever.invoke(last_message.content)
+        context = "\n\n".join(d.page_content for d in docs)
+    except Exception:
+        context = ""
 
-    if intent == "resume":
-        retriever = get_linkareer_retriever()
-    else:
-        retriever = get_retriever(job_id=state.get("job_id"))
-
-    docs = retriever.invoke(last_message.content)
-    context = "\n\n".join(d.page_content for d in docs)
     return {"context": context}

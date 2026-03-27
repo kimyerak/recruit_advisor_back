@@ -61,3 +61,29 @@ def ingest_linkareer_documents(documents: list[Document]) -> None:
     store = _get_linkareer_store()
     store.add_documents(documents)
     print(f"[vectorstore:linkareer] {len(documents)}개 문서 저장 완료")
+
+
+# ── 선배 경험 관련 ─────────────────────────────────────
+
+def _get_senior_store() -> Chroma:
+    return Chroma(
+        persist_directory=settings.vectorstore_path,
+        embedding_function=_embeddings(),
+        collection_name="senior_collection",
+    )
+
+
+def get_senior_retriever():
+    """KT 재직 선배 경험 검색 리트리버"""
+    store = _get_senior_store()
+    return store.as_retriever(search_kwargs={"k": 3})
+
+
+def ingest_senior_documents(documents: list[Document]) -> None:
+    """선배 경험 문서를 벡터스토어에 저장 (중복 방지: 기존 컬렉션 초기화 후 재저장)"""
+    store = _get_senior_store()
+    existing = store.get()
+    if existing["ids"]:
+        store.delete(ids=existing["ids"])
+    store.add_documents(documents)
+    print(f"[vectorstore:senior] {len(documents)}개 문서 저장 완료")
