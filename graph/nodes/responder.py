@@ -17,7 +17,7 @@ def responder_node(state: ChatState) -> ChatState:
     if context:
         if intent == "resume":
             system_content += f"\n\n[KT 합격 선배들의 실제 자소서 예시]\n아래 자소서를 참고해서 구체적인 조언을 해줘.\n{context}"
-        else:
+        elif intent == "jd":
             system_content += f"\n\n[채용공고 정보]\n{context}"
 
     llm = ChatOpenAI(model=settings.model_name, temperature=0.7)
