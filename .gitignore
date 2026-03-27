@@ -6,3 +6,4 @@ __pycache__/
 venv/
 knowledge/vectorstore/
 knowledge/pdfs/
+knowledge/data/
